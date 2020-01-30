@@ -14,7 +14,7 @@ resource "aws_sqs_queue" "ping_queue_deadletter" {
 resource "aws_sqs_queue" "ping_queue" {
   name = var.ping_queue_name
   max_message_size = 2048
-  visibility_timeout_seconds = 30
+  visibility_timeout_seconds = 10
   message_retention_seconds = 86400
   lifecycle {
     ignore_changes  = [name]

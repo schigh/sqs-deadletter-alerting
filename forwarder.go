@@ -8,24 +8,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"golang.org/x/sync/errgroup"
+	"github.com/rs/zerolog/log"
 )
 
-var clientPool sync.Pool
-
 func main() {
-	clientPool.New = func() interface{} {
-		return &http.Client{
-			Timeout:       5 * time.Second,
-		}
-	}
 	lambda.Start(forward)
 }
 
@@ -51,6 +45,7 @@ func getEndpoints() (map[string]string, error) {
 func forward(ctx context.Context, evt events.SNSEvent) error {
 	endpoints, err := getEndpoints()
 	if err != nil {
+		log.Error().Err(err).Send()
 		return err
 	}
 
@@ -63,6 +58,8 @@ func forward(ctx context.Context, evt events.SNSEvent) error {
 				return fmt.Errorf("no endpoint exists to handle messages from topic: %s", record.SNS.TopicArn)
 			}
 
+			log.Info().Interface("record", record).Send()
+			log.Info().Str("endpoint", endpoint).Str("topic", record.SNS.TopicArn).Send()
 			alarm := &CloudWatchAlarm{}
 			if err := json.Unmarshal([]byte(record.SNS.Message), alarm); err != nil {
 				return err
@@ -75,26 +72,31 @@ func forward(ctx context.Context, evt events.SNSEvent) error {
 
 			data, err := json.Marshal(&msg)
 			if err != nil {
+				log.Error().Err(err).Send()
 				return err
 			}
 
 			req, err := http.NewRequest(http.MethodPost, endpoint, bytes.NewBuffer(data))
 			if err != nil {
+				log.Error().Err(err).Send()
 				return err
 			}
 
 			req = req.WithContext(childCtx)
 
-			client, _ := clientPool.Get().(*http.Client)
-			defer clientPool.Put(client)
+			client := http.DefaultClient
+			client.Timeout = 5 * time.Second
 
 			resp, err := client.Do(req)
 			if err != nil {
+				log.Error().Err(err).Send()
 				return err
 			}
 
-			respData, _ := json.MarshalIndent(resp, "", "  ")
-			fmt.Println(string(respData))
+			respData, _ := ioutil.ReadAll(resp.Body)
+			defer resp.Body.Close()
+
+			log.Info().RawJSON("respData", respData).Send()
 
 			return nil
 		})
