@@ -1,5 +1,5 @@
 # TL;DR:
-This repo sets up a simple Go lambda that is triggered by an SQS queue.  If the lambda fails, the SQS message is sent to a deadletter queue.  When a message gets put on the deadletter queue, a cloudwatch alarm is triggered.
+This repo sets up a simple Go lambda that is triggered by an SQS queue.  If the lambda fails, the SQS message is sent to a deadletter queue.  When a message gets put on the deadletter queue, a cloudwatch alarm is triggered, which sends an SNS notification to a "notifier" lambda, which then notifies a Slack channel.
 
 ## Helper tools
 * `get_token.sh`
