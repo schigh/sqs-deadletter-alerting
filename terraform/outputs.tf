@@ -3,7 +3,7 @@ output "ping_lambda_arn" {
 }
 
 output "forwarder_lambda_arn" {
-  value = aws_lambda_function.forwarder.arn
+  value = aws_lambda_function.sns_slack_forwarder.arn
 }
 
 output "ping_queue_arn" {

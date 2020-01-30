@@ -40,7 +40,7 @@ data "aws_iam_policy_document" "sns_policy" {
 }
 
 resource "aws_sns_topic_subscription" "slack" {
-  endpoint = aws_lambda_function.forwarder.arn
+  endpoint = aws_lambda_function.sns_slack_forwarder.arn
   protocol = "lambda"
   topic_arn = aws_sns_topic.ping_deadletter_alarm_topic.arn
 }

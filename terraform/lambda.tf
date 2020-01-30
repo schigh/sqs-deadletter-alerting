@@ -1,3 +1,4 @@
+# ping is triggered by the initial SQS message
 resource "aws_lambda_function" "ping" {
   function_name = var.ping_lambda_name
   handler = "main"
@@ -20,6 +21,7 @@ resource "aws_lambda_function" "ping" {
   }
 }
 
+# give the ping queue permission to trigger the ping lambda
 resource "aws_lambda_permission" "sqs_trigger_permission" {
   action = "lambda:InvokeFunction"
   function_name = aws_lambda_function.ping.function_name
@@ -27,14 +29,16 @@ resource "aws_lambda_permission" "sqs_trigger_permission" {
   source_arn = aws_sqs_queue.ping_queue.arn
 }
 
+# map the event source from the ping queue to the ping lambda
 resource "aws_lambda_event_source_mapping" "sqs_trigger" {
   event_source_arn = aws_sqs_queue.ping_queue.arn
   function_name = aws_lambda_function.ping.function_name
   batch_size = 1
 }
 
-resource "aws_lambda_function" "forwarder" {
-  function_name = "forwarder"
+# slack_forwarder is triggered by the deadletter queue
+resource "aws_lambda_function" "sns_slack_forwarder" {
+  function_name = "sns_slack_forwarder"
   handler = "main"
   role = aws_iam_role.default-role.arn
   runtime = "go1.x"
@@ -60,10 +64,23 @@ resource "aws_lambda_function" "forwarder" {
     Provisioner = "terraform"
   }
 }
+// if you want to allow the deadletter queue to trigger the forwarder directly, you can use this
+//resource "aws_lambda_permission" "sqs_deadletter_trigger_permission" {
+//  action = "lambda:InvokeFunction"
+//  function_name = aws_lambda_function.slack_forwarder.function_name
+//  principal = "sqs.amazonaws.com"
+//  source_arn = aws_sqs_queue.ping_queue_deadletter.arn
+//}
+//
+//resource "aws_lambda_event_source_mapping" "sqs_deadletter_trigger" {
+//  event_source_arn = aws_sqs_queue.ping_queue_deadletter.arn
+//  function_name = aws_lambda_function.slack_forwarder.function_name
+//  batch_size = 1
+//}
 
 resource "aws_lambda_permission" "forwarder_sns_trigger_permission" {
   action = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.forwarder.function_name
+  function_name = aws_lambda_function.sns_slack_forwarder.function_name
   principal = "sns.amazonaws.com"
   source_arn = aws_sns_topic.ping_deadletter_alarm_topic.arn
 }
