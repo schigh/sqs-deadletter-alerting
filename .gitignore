@@ -1,0 +1,9 @@
+/terraform/plan
+/terraform/*.auto.tfvars
+/terraform/terraform.tfvars
+/terraform/terraform.tfstate
+/terraform/terraform.tfstate.backup
+/terraform/.terraform/
+/secrets.txt
+/build/
+/build.zip
